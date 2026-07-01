@@ -115,8 +115,11 @@ def root():
     index = STATIC_DIR / "index.html"
     if index.exists():
         return FileResponse(str(index))
+    from . import __version__
+
     return {
         "service": "SHL Conversational Assessment Recommender",
+        "version": __version__,
         "endpoints": ["GET /health", "POST /chat"],
         "docs": "/docs",
     }

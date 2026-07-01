@@ -18,3 +18,7 @@ services:
         value: gpt-4o-mini
       - key: EMBED_MODEL
         value: text-embedding-3-small
+      - key: REQUEST_TIMEOUT_S
+        value: "12"
+      - key: LLM_MAX_RETRIES
+        value: "1"

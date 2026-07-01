@@ -46,8 +46,11 @@ class Settings:
     embed_base_url: str | None = os.getenv("EMBED_BASE_URL") or None
 
     # ---- Behaviour / budgets ----
-    request_timeout_s: float = float(_get("REQUEST_TIMEOUT_S", "20"))
-    max_retries: int = int(_get("LLM_MAX_RETRIES", "2"))
+    # Per-call time budget: the evaluator times out at 30s. Typical latency is
+    # embed(~0.5s) + one chat(~5s). Cap each attempt at 12s with a single retry so
+    # even a retried call stays comfortably inside 30s.
+    request_timeout_s: float = float(_get("REQUEST_TIMEOUT_S", "12"))
+    max_retries: int = int(_get("LLM_MAX_RETRIES", "1"))
     retrieval_top_k: int = int(_get("RETRIEVAL_TOP_K", "50"))
     max_recommendations: int = int(_get("MAX_RECOMMENDATIONS", "10"))
     embed_dim: int = int(_get("EMBED_DIM", "1536"))  # text-embedding-3-small

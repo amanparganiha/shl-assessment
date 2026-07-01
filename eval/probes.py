@@ -133,6 +133,26 @@ def probe_honors_drop() -> ProbeResult:
     return ProbeResult("honors_drop_personality", ok, f"final={_names(final)}")
 
 
+def probe_compare() -> ProbeResult:
+    responses = _script(
+        ["Hiring a software engineer. Recommend a battery including a personality and a cognitive test.",
+         "No other preferences.",
+         "What is the difference between OPQ32r and SHL Verify Interactive G+?"]
+    )
+    reply = responses[-1].reply.lower()
+    mentions_both = ("opq" in reply) and ("verify" in reply or "g+" in reply)
+    grounded_distinction = (
+        any(s in reply for s in ["personality", "behaviour", "behavior"])
+        and any(s in reply for s in ["ability", "reasoning", "cognitive", "aptitude"])
+    )
+    not_refusal = not any(s in reply for s in ["out of scope", "i cannot help", "can't help with that"])
+    ok = mentions_both and grounded_distinction and not_refusal
+    return ProbeResult(
+        "compare_grounded", ok,
+        f"both={mentions_both} distinct={grounded_distinction} reply={responses[-1].reply[:90]!r}",
+    )
+
+
 def probe_grounding() -> ProbeResult:
     responses = _script(
         ["Hiring a data analyst — SQL, Excel, and numerical reasoning.",
@@ -152,6 +172,7 @@ PROBES = [
     probe_injection,
     probe_honors_add,
     probe_honors_drop,
+    probe_compare,
     probe_grounding,
 ]
 

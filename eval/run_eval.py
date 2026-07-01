@@ -14,9 +14,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -25,10 +28,29 @@ from app.agent import run_agent  # noqa: E402
 from app.catalog import Catalog  # noqa: E402
 from app.llm import chat_text  # noqa: E402
 from app.retriever import Retriever  # noqa: E402
-from app.schemas import ChatResponse, Message  # noqa: E402
+from app.schemas import ChatResponse, Message, Recommendation  # noqa: E402
 from eval.traces import Trace, load_traces, normalize_url  # noqa: E402
 
 MAX_TURNS = 8
+
+AgentFn = Callable[[list[Message]], ChatResponse]
+
+
+def _post_live(endpoint: str, history: list[Message]) -> ChatResponse:
+    """Call a deployed /chat endpoint over HTTP (validates the real service)."""
+    payload = {"messages": [{"role": m.role, "content": m.content} for m in history]}
+    req = urllib.request.Request(
+        endpoint.rstrip("/") + "/chat",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        j = json.loads(resp.read().decode("utf-8"))
+    return ChatResponse(
+        reply=j.get("reply", ""),
+        recommendations=[Recommendation(**r) for r in j.get("recommendations", [])],
+        end_of_conversation=bool(j.get("end_of_conversation", False)),
+    )
 
 SIM_SYSTEM = """You are role-playing a hiring manager chatting with an SHL assessment recommender.
 
@@ -67,7 +89,7 @@ def _simulate_next_user(facts: str, agent_history: list[Message]) -> str:
     return chat_text(SIM_SYSTEM.format(facts=facts), sim_messages, max_tokens=120)
 
 
-def _run_conversation(trace: Trace, catalog: Catalog, retriever: Retriever, mode: str):
+def _run_conversation(trace: Trace, agent_fn: AgentFn, mode: str):
     """Drive one conversation; return (first_shortlist: ChatResponse|None, turns_used, history)."""
     history: list[Message] = []
     scripted = list(trace.user_messages)
@@ -76,7 +98,7 @@ def _run_conversation(trace: Trace, catalog: Catalog, retriever: Retriever, mode
 
     for turn in range(1, MAX_TURNS + 1):
         history.append(Message(role="user", content=user_msg))
-        resp = run_agent(history, retriever=retriever)
+        resp = agent_fn(history)
         history.append(Message(role="assistant", content=resp.reply))
 
         if resp.recommendations:  # harness ends at first shortlist
@@ -98,8 +120,8 @@ def _run_conversation(trace: Trace, catalog: Catalog, retriever: Retriever, mode
     return None, MAX_TURNS, history
 
 
-def evaluate_trace(trace: Trace, catalog: Catalog, retriever: Retriever, mode: str) -> TraceResult:
-    resp, turns, _ = _run_conversation(trace, catalog, retriever, mode)
+def evaluate_trace(trace: Trace, catalog: Catalog, agent_fn: AgentFn, mode: str) -> TraceResult:
+    resp, turns, _ = _run_conversation(trace, agent_fn, mode)
     expected = set(trace.final_shortlist)
     got_urls = [normalize_url(r.url) for r in resp.recommendations] if resp else []
     got_top10 = got_urls[:10]
@@ -129,18 +151,27 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["simulate", "deterministic"], default="simulate")
     ap.add_argument("--trace", default=None, help="e.g. C4 (default: all)")
+    ap.add_argument("--endpoint", default=None,
+                    help="score a deployed URL over HTTP instead of the in-process agent")
     args = ap.parse_args()
 
     catalog = Catalog.load()
-    retriever = Retriever(catalog)
     traces = load_traces()
     if args.trace:
         traces = [t for t in traces if t.name.lower() == args.trace.lower()]
 
-    print(f"=== Recall@10 eval ({args.mode} mode, {len(traces)} traces) ===\n")
+    if args.endpoint:
+        agent_fn: AgentFn = lambda h: _post_live(args.endpoint, h)  # noqa: E731
+        target = f"LIVE {args.endpoint}"
+    else:
+        retriever = Retriever(catalog)
+        agent_fn = lambda h: run_agent(h, retriever=retriever)  # noqa: E731
+        target = "in-process"
+
+    print(f"=== Recall@10 eval ({args.mode} mode, {len(traces)} traces, {target}) ===\n")
     results: list[TraceResult] = []
     for tr in traces:
-        res = evaluate_trace(tr, catalog, retriever, args.mode)
+        res = evaluate_trace(tr, catalog, agent_fn, args.mode)
         results.append(res)
         print(f"{res.name:5s} Recall@10={res.recall:.2f} ({res.n_hit}/{res.n_expected}) "
               f"turns={res.turns_used}")

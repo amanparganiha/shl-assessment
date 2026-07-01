@@ -119,6 +119,18 @@ def run_agent(messages: list[Message], retriever: Retriever | None = None) -> Ch
     ]
     system_prompt = SYSTEM_PROMPT.format(candidates="\n".join(lines))
 
+    # Turn-cap guard: the evaluator caps conversations at 8 turns. If we have already
+    # spent several user turns, stop clarifying and commit to a shortlist (unless the
+    # request is out of scope, which should still be refused).
+    user_turns = sum(1 for m in messages if m.role == "user")
+    if user_turns >= 3:
+        system_prompt += (
+            "\n\nIMPORTANT: This conversation already has several user turns. If you have ANY "
+            "usable hiring context (a role, skills, or a job description), you MUST recommend a "
+            "shortlist now instead of asking another clarifying question. Only keep clarifying if "
+            "you still have essentially nothing to act on, and still refuse out-of-scope requests."
+        )
+
     try:
         action = chat_json(system_prompt, convo, ACTION_JSON_SCHEMA)
     except Exception as exc:  # noqa: BLE001 - never surface a 500 to the evaluator

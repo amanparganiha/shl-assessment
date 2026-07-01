@@ -35,11 +35,13 @@ def _chat_client() -> OpenAI:
 
 @lru_cache(maxsize=1)
 def _embed_client() -> OpenAI:
+    # Embeddings are tiny and fast, and retrieval degrades to lexical-only if this
+    # fails, so use a short timeout and no retries to protect the 30s budget.
     return OpenAI(
         api_key=settings.embed_api_key,
         base_url=settings.embed_base_url,
-        timeout=settings.request_timeout_s,
-        max_retries=settings.max_retries,
+        timeout=min(settings.request_timeout_s, 8.0),
+        max_retries=0,
     )
 
 
