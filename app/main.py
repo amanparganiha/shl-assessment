@@ -16,6 +16,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
+from . import __version__
 from .agent import run_agent
 from .config import settings
 from .retriever import get_retriever
@@ -43,7 +44,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="SHL Conversational Assessment Recommender",
-    version="1.0.0",
+    version=__version__,
     lifespan=lifespan,
 )
 
@@ -59,6 +60,12 @@ app.add_middleware(
 def health() -> HealthResponse:
     """Readiness probe. Intentionally cheap and LLM-free."""
     return HealthResponse(status="ok")
+
+
+@app.get("/version")
+def version() -> dict[str, str]:
+    """Build marker (used to confirm which revision is deployed)."""
+    return {"version": __version__}
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -115,8 +122,6 @@ def root():
     index = STATIC_DIR / "index.html"
     if index.exists():
         return FileResponse(str(index))
-    from . import __version__
-
     return {
         "service": "SHL Conversational Assessment Recommender",
         "version": __version__,
