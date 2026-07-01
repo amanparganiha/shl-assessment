@@ -1,0 +1,20 @@
+# Render Blueprint. Deploy: push this repo to GitHub, then in Render:
+#   New + -> Blueprint -> pick this repo. Set OPENAI_API_KEY in the dashboard.
+# The processed catalog + embeddings are committed, so no build-time API calls.
+services:
+  - type: web
+    name: shl-assessment-recommender
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false            # set manually in the dashboard (secret)
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: CHAT_MODEL
+        value: gpt-4o-mini
+      - key: EMBED_MODEL
+        value: text-embedding-3-small

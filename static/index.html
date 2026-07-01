@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SHL Assessment Advisor</title>
+<style>
+  :root { --shl:#00843d; --bg:#f5f7f6; --ink:#1c2321; --muted:#5c6b64; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         background:var(--bg); color:var(--ink); }
+  header { background:#fff; border-bottom:1px solid #e3e8e5; padding:14px 20px; display:flex;
+           align-items:center; gap:10px; }
+  header b { font-size:18px; } header .dot { color:var(--shl); }
+  #wrap { max-width:820px; margin:0 auto; padding:16px; }
+  #chat { display:flex; flex-direction:column; gap:12px; min-height:50vh; }
+  .msg { padding:12px 14px; border-radius:12px; max-width:88%; line-height:1.45; white-space:pre-wrap; }
+  .user { align-self:flex-end; background:var(--shl); color:#fff; border-bottom-right-radius:3px; }
+  .bot  { align-self:flex-start; background:#fff; border:1px solid #e3e8e5; border-bottom-left-radius:3px; }
+  .recs { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+  .rec { border:1px solid #e3e8e5; border-radius:10px; padding:10px 12px; background:#fafcfb; }
+  .rec a { color:var(--shl); text-decoration:none; font-weight:600; }
+  .rec a:hover { text-decoration:underline; }
+  .tag { display:inline-block; font-size:11px; font-weight:700; background:#e7f3ec; color:var(--shl);
+         border-radius:6px; padding:2px 7px; margin-left:6px; }
+  .end { font-size:12px; color:var(--muted); margin-top:6px; }
+  form { display:flex; gap:8px; margin-top:14px; }
+  input { flex:1; padding:12px 14px; border:1px solid #cfd8d3; border-radius:10px; font-size:15px; }
+  button { padding:12px 18px; border:0; background:var(--shl); color:#fff; border-radius:10px;
+           font-size:15px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  .hint { color:var(--muted); font-size:13px; margin:4px 0 12px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .chip { font-size:12px; border:1px solid #cfd8d3; background:#fff; border-radius:16px;
+          padding:5px 10px; cursor:pointer; }
+</style>
+</head>
+<body>
+<header><b>SHL Assessment Advisor<span class="dot">.</span></b>
+  <span style="color:var(--muted);font-size:13px">conversational recommender</span></header>
+<div id="wrap">
+  <p class="hint">Describe who you're hiring. The agent will clarify, then recommend SHL assessments. It stays in-scope and only recommends real catalog items.</p>
+  <div class="row">
+    <span class="chip" onclick="seed(this)">Hiring a mid-level Java developer who works with stakeholders</span>
+    <span class="chip" onclick="seed(this)">We need a solution for senior leadership</span>
+    <span class="chip" onclick="seed(this)">What is the difference between OPQ and GSA?</span>
+  </div>
+  <div id="chat"></div>
+  <form id="f">
+    <input id="in" autocomplete="off" placeholder="Type your message..." />
+    <button id="send" type="submit">Send</button>
+  </form>
+</div>
+<script>
+  const chat = document.getElementById('chat');
+  const input = document.getElementById('in');
+  const btn = document.getElementById('send');
+  const messages = [];          // full history (stateless server needs it every call)
+
+  function esc(s){ return (s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+  function bubble(text, cls){
+    const d = document.createElement('div');
+    d.className = 'msg ' + cls; d.textContent = text; chat.appendChild(d);
+    chat.scrollIntoView(false); return d;
+  }
+
+  function renderRecs(container, recs, end){
+    if(recs && recs.length){
+      const box = document.createElement('div'); box.className = 'recs';
+      recs.forEach(r => {
+        const c = document.createElement('div'); c.className = 'rec';
+        c.innerHTML = `<a href="${r.url}" target="_blank" rel="noopener">${esc(r.name)}</a>`
+          + `<span class="tag">${esc(r.test_type)}</span>`;
+        box.appendChild(c);
+      });
+      container.appendChild(box);
+    }
+    if(end){ const e = document.createElement('div'); e.className='end';
+      e.textContent = 'Conversation marked complete.'; container.appendChild(e); }
+  }
+
+  function seed(el){ input.value = el.textContent; input.focus(); }
+
+  document.getElementById('f').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = input.value.trim(); if(!text) return;
+    input.value = ''; btn.disabled = true;
+    bubble(text, 'user'); messages.push({role:'user', content:text});
+    const thinking = bubble('...', 'bot');
+    try {
+      const res = await fetch('/chat', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({messages})
+      });
+      const data = await res.json();
+      thinking.textContent = data.reply || '(no reply)';
+      renderRecs(thinking, data.recommendations, data.end_of_conversation);
+      messages.push({role:'assistant', content:data.reply || ''});
+    } catch(err) {
+      thinking.textContent = 'Error: ' + err;
+    } finally { btn.disabled = false; input.focus(); }
+  });
+</script>
+</body>
+</html>
