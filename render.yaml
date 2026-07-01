@@ -19,6 +19,6 @@ services:
       - key: EMBED_MODEL
         value: text-embedding-3-small
       - key: REQUEST_TIMEOUT_S
-        value: "12"
+        value: "10"
       - key: LLM_MAX_RETRIES
         value: "1"

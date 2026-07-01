@@ -47,9 +47,10 @@ class Settings:
 
     # ---- Behaviour / budgets ----
     # Per-call time budget: the evaluator times out at 30s. Typical latency is
-    # embed(~0.5s) + one chat(~5s). Cap each attempt at 12s with a single retry so
-    # even a retried call stays comfortably inside 30s.
-    request_timeout_s: float = float(_get("REQUEST_TIMEOUT_S", "12"))
+    # embed(~0.5s) + one chat(~4s). Worst case is bounded to ~26s: embed (6s, no
+    # retry) + chat (10s x 1 retry = 20s), and we never fire a second full chat
+    # call after a timeout. So every /chat call stays inside the 30s cap.
+    request_timeout_s: float = float(_get("REQUEST_TIMEOUT_S", "10"))
     max_retries: int = int(_get("LLM_MAX_RETRIES", "1"))
     retrieval_top_k: int = int(_get("RETRIEVAL_TOP_K", "50"))
     max_recommendations: int = int(_get("MAX_RECOMMENDATIONS", "10"))

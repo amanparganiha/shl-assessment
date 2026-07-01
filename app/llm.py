@@ -16,7 +16,7 @@ from functools import lru_cache
 from typing import Any
 
 import numpy as np
-from openai import OpenAI
+from openai import APITimeoutError, OpenAI
 
 from .config import settings
 
@@ -40,7 +40,7 @@ def _embed_client() -> OpenAI:
     return OpenAI(
         api_key=settings.embed_api_key,
         base_url=settings.embed_base_url,
-        timeout=min(settings.request_timeout_s, 8.0),
+        timeout=min(settings.request_timeout_s, 6.0),
         max_retries=0,
     )
 
@@ -78,6 +78,10 @@ def chat_json(
             },
         )
         return _parse(resp.choices[0].message.content)
+    except APITimeoutError:
+        # Do NOT fire a second full call after a timeout - that could blow the 30s
+        # budget. Propagate so the caller degrades gracefully (fast, schema-valid).
+        raise
     except Exception as exc:  # noqa: BLE001 - provider may not support json_schema
         logger.warning("json_schema mode failed (%s); falling back to json_object", exc)
 
