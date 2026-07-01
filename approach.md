@@ -61,8 +61,9 @@ Three harnesses, all runnable locally:
 - **Retrieval-ceiling** diagnostic (Recall@50 of the retriever alone) = **0.81**, which localised
   the gap to *composition* rather than retrieval and told me where to spend effort.
 - **Behavior probes** (binary assertions): no-rec-on-vague-turn-1, rich-query-recommends, refuse
-  off-topic / legal / injection, honours add & drop, all URLs in catalog. **Pass-rate = 8/8.**
-  Plus 14 unit tests over the deterministic core (grounding, schema enforcement, test_type).
+  off-topic / legal / injection, honours add & drop, grounded compare, all URLs in catalog.
+  **Pass-rate = 9/9.** Plus 14 unit tests over the deterministic core (grounding, schema
+  enforcement, test_type derivation). The harness can also score the **live** endpoint over HTTP.
 
 ## What didn't work / trade-offs (and how I measured it)
 Iterating against the harness took **Mean Recall@10 from 0.44 → 0.69**:

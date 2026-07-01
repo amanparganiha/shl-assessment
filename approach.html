@@ -67,8 +67,9 @@ exactly; compare using only candidate descriptions; refuse legal / off-topic / p
 - <strong>Retrieval-ceiling</strong> diagnostic (Recall@50 of the retriever alone) = <strong>0.81</strong>, which localised
   the gap to <em>composition</em> rather than retrieval and told me where to spend effort.
 - <strong>Behavior probes</strong> (binary assertions): no-rec-on-vague-turn-1, rich-query-recommends, refuse
-  off-topic / legal / injection, honours add &amp; drop, all URLs in catalog. <strong>Pass-rate = 8/8.</strong>
-  Plus 14 unit tests over the deterministic core (grounding, schema enforcement, test_type).</p>
+  off-topic / legal / injection, honours add &amp; drop, grounded compare, all URLs in catalog.
+  <strong>Pass-rate = 9/9.</strong> Plus 14 unit tests over the deterministic core (grounding, schema
+  enforcement, test_type derivation). The harness can also score the <strong>live</strong> endpoint over HTTP.</p>
 <h2>What didn't work / trade-offs (and how I measured it)</h2>
 <p>Iterating against the harness took <strong>Mean Recall@10 from 0.44 → 0.69</strong>:
 - <strong>Dense-only retrieval</strong> missed staple instruments for skill-only queries (OPQ32r/Verify G+
