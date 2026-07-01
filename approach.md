@@ -56,8 +56,8 @@ exactly; compare using only candidate descriptions; refuse legal / off-topic / p
 Three harnesses, all runnable locally:
 - **Recall@10** with an **LLM user-simulator** that mirrors SHL's replay (answers from persona
   facts, "no preference" otherwise, ends on a shortlist). Scores the first committed shortlist vs
-  the labelled final shortlist. **Mean Recall@10 = 0.69** (simulator) / **0.61** (deterministic
-  replay of the trace turns) across the 10 public traces.
+  the labelled final shortlist. **Mean Recall@10 = 0.67** across the 10 public traces - three runs
+  against the *deployed* endpoint gave 0.65 / 0.67 / 0.69 (deterministic replay: 0.61-0.63).
 - **Retrieval-ceiling** diagnostic (Recall@50 of the retriever alone) = **0.81**, which localised
   the gap to *composition* rather than retrieval and told me where to spend effort.
 - **Behavior probes** (binary assertions): no-rec-on-vague-turn-1, rich-query-recommends, refuse
@@ -66,7 +66,7 @@ Three harnesses, all runnable locally:
   enforcement, test_type derivation). The harness can also score the **live** endpoint over HTTP.
 
 ## What didn't work / trade-offs (and how I measured it)
-Iterating against the harness took **Mean Recall@10 from 0.44 → 0.69**:
+Iterating against the harness took **Mean Recall@10 from 0.44 → ~0.67** (stable live range 0.65-0.69):
 - **Dense-only retrieval** missed staple instruments for skill-only queries (OPQ32r/Verify G+
   absent from candidates) → added BM25 + always-injected staples: **0.44 → 0.56**.
 - **Minimal first shortlists** under-scored because the harness ends at the first shortlist →
